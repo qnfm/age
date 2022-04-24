@@ -5,14 +5,12 @@
 package age
 
 import (
-	"crypto/hmac"
-	"crypto/sha256"
 	"errors"
 	"io"
 
 	"filippo.io/age/internal/format"
 	"golang.org/x/crypto/chacha20poly1305"
-	"golang.org/x/crypto/hkdf"
+	"golang.org/x/crypto/sha3"
 )
 
 // aeadEncrypt encrypts a message with a one-time key.
@@ -50,20 +48,22 @@ func aeadDecrypt(key []byte, size int, ciphertext []byte) ([]byte, error) {
 }
 
 func headerMAC(fileKey []byte, hdr *format.Header) ([]byte, error) {
-	h := hkdf.New(sha256.New, fileKey, nil, []byte("header"))
-	hmacKey := make([]byte, 32)
-	if _, err := io.ReadFull(h, hmacKey); err != nil {
+	h := sha3.NewShake256()
+	h.Write(fileKey)
+	h.Write([]byte("header"))
+	if err := hdr.MarshalWithoutMAC(h); err != nil {
 		return nil, err
 	}
-	hh := hmac.New(sha256.New, hmacKey)
-	if err := hdr.MarshalWithoutMAC(hh); err != nil {
-		return nil, err
-	}
-	return hh.Sum(nil), nil
+	var buf [32]byte
+	h.Read(buf[:])
+	return buf[:], nil
 }
 
 func streamKey(fileKey, nonce []byte) []byte {
-	h := hkdf.New(sha256.New, fileKey, nonce, []byte("payload"))
+	h := sha3.NewShake256()
+	h.Write(fileKey)
+	h.Write(nonce)
+	h.Write([]byte("payload"))
 	streamKey := make([]byte, chacha20poly1305.KeySize)
 	if _, err := io.ReadFull(h, streamKey); err != nil {
 		panic("age: internal error: failed to read from HKDF: " + err.Error())
