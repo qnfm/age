@@ -1,11 +1,20 @@
 module filippo.io/age
 
-go 1.17
+go 1.23.0
+
+toolchain go1.24.5
 
 require (
-	filippo.io/edwards25519 v1.0.0-rc.1
-	golang.org/x/crypto v0.0.0-20210817164053-32db794688a5
-	golang.org/x/term v0.0.0-20210615171337-6886f2dfbf5b
+	filippo.io/edwards25519 v1.1.0
+	golang.org/x/crypto v0.40.0
+	golang.org/x/term v0.33.0
 )
 
-require golang.org/x/sys v0.0.0-20210903071746-97244b99971b // indirect
+require github.com/lukechampine/fastxor v0.0.0-20210322201628-b664bed5a5cc
+
+require (
+	github.com/cloudflare/circl v1.6.1
+	golang.org/x/sys v0.34.0 // indirect
+)
+
+replace github.com/cloudflare/circl => ../circl
