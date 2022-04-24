@@ -70,6 +70,7 @@ $ age -o example.jpg.age -r age1ql3z7hjy54pw3hyww5ayyfg7zqgvc7w3j2elw8zmrj2kg5sf
 ```
 
 #### Recipient files
+Recommanded way for Kyber-kem
 
 Multiple recipients can also be listed one per line in one or more files passed with the `-R/--recipients-file` flag.
 

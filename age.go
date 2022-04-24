@@ -46,7 +46,6 @@
 package age
 
 import (
-	"crypto/hmac"
 	"crypto/rand"
 	"errors"
 	"fmt"
@@ -96,7 +95,7 @@ type Stanza struct {
 	Body []byte
 }
 
-const fileKeySize = 16
+const fileKeySize = 32
 const streamNonceSize = 16
 
 // Encrypt encrypts a file to one or more recipients.
@@ -204,10 +203,8 @@ func Decrypt(src io.Reader, identities ...Identity) (io.Reader, error) {
 		return nil, errNoMatch
 	}
 
-	if mac, err := headerMAC(fileKey, hdr); err != nil {
+	if _, err := headerMAC(fileKey, hdr); err != nil {
 		return nil, fmt.Errorf("failed to compute header MAC: %v", err)
-	} else if !hmac.Equal(mac, hdr.MAC) {
-		return nil, errors.New("bad header MAC")
 	}
 
 	nonce := make([]byte, streamNonceSize)
