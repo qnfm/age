@@ -31,7 +31,7 @@ func ParseIdentities(f io.Reader) ([]Identity, error) {
 		if strings.HasPrefix(line, "#") || line == "" {
 			continue
 		}
-		i, err := ParseKyber1024Identity(line)
+		i, err := ParseKyber512Identity(line)
 		if err != nil {
 			return nil, fmt.Errorf("error at line %d: %v", n, err)
 		}
@@ -66,7 +66,7 @@ func ParseRecipients(f io.Reader) ([]Recipient, error) {
 		if strings.HasPrefix(line, "#") || line == "" {
 			continue
 		}
-		r, err := ParseKyber1024Recipient(line)
+		r, err := ParseKyber512Recipient(line)
 		if err != nil {
 			// Hide the error since it might unintentionally leak the contents
 			// of confidential files.

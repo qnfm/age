@@ -121,7 +121,7 @@ func main() {
 }
 
 func generate(out *os.File) {
-	k, err := age.GenerateKyber1024Identity()
+	k, err := age.GenerateKyber512Identity()
 	if err != nil {
 		errorf("internal error: %v", err)
 	}
@@ -145,7 +145,7 @@ func convert(in io.Reader, out io.Writer) {
 		errorf("no identities found in the input")
 	}
 	for _, id := range ids {
-		id, ok := id.(*age.Kyber1024Identity)
+		id, ok := id.(*age.Kyber512Identity)
 		if !ok {
 			errorf("internal error: unexpected identity type: %T", id)
 		}

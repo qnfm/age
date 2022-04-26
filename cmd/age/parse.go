@@ -33,7 +33,7 @@ func (gitHubRecipientError) Error() string {
 func parseRecipient(arg string) (age.Recipient, error) {
 	switch {
 	case strings.HasPrefix(arg, "age1"):
-		return age.ParseKyber1024Recipient(arg)
+		return age.ParseKyber512Recipient(arg)
 	case strings.HasPrefix(arg, "ssh-"):
 		return agessh.ParseRecipient(arg)
 	case strings.HasPrefix(arg, "github:"):
