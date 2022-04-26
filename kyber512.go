@@ -6,7 +6,6 @@ package age
 
 import (
 	"crypto/rand"
-	"crypto/subtle"
 	"errors"
 	"fmt"
 	"io"
@@ -14,11 +13,11 @@ import (
 
 	"filippo.io/age/internal/bech32"
 	"filippo.io/age/internal/format"
-	"github.com/cloudflare/circl/pke/kyber/kyber1024"
+	"github.com/cloudflare/circl/kem/kyber/kyber1024"
 	"golang.org/x/crypto/sha3"
 )
 
-const Kyber1024Label = "age-encryption.org/v3/Kyber1024"
+const KyberLabel = "age-encryption.org/v3/Kyber1024"
 
 // Kyber1024Recipient is the standard age public key. Messages encrypted to this
 // recipient can be decrypted with the corresponding Kyber1024Identity.
@@ -45,30 +44,22 @@ func ParseKyber1024Recipient(s string) (*Kyber1024Recipient, error) {
 }
 
 func (r *Kyber1024Recipient) Wrap(fileKey []byte) ([]*Stanza, error) {
-
-	h := sha3.NewShake256()
-	ct := make([]byte, kyber1024.CiphertextSize)
-	h.Reset()
-	//ct := publickey.Encrypt(pt:filekey,seed:H(filekey||pk))
-	h.Write(fileKey)
-	h.Write(r.theirPublicKey)
-	seed := make([]byte, kyber1024.KeySeedSize)
-	h.Read(seed[:])
+	//sharedKey<-encapsulate(pk) as wrappingKey
 	var p kyber1024.PublicKey
 	p.Unpack(r.theirPublicKey)
+	ct := make([]byte, kyber1024.CiphertextSize)
+	wrappingKey := make([]byte, kyber1024.SharedKeySize)
+	p.EncapsulateTo(ct, wrappingKey, nil)
 
-	p.EncryptTo(ct, fileKey[:], seed[:])
-	h.Reset()
+	wrappedKey, err := aeadEncrypt(wrappingKey, fileKey)
+	if err != nil {
+		return nil, err
+	}
 
-	//signature := H(fileKey||ct)[:32]
-	h.Write(fileKey)
-	h.Write(ct)
-	sig := make([]byte, 32)
-	h.Read(sig[:])
-
+	//Due to the size of kyber.encapsulation,it's more pleasing to put wrappedKey to where ourPublicKey was
 	l := &Stanza{
 		Type: "Kyber1024",
-		Args: []string{format.EncodeToString(sig)},
+		Args: []string{format.EncodeToString(wrappedKey)},
 		Body: ct,
 	}
 
@@ -81,7 +72,7 @@ func (r *Kyber1024Recipient) String() string {
 	return s
 }
 
-// Kyber1024Identity is the custom age private key, which can decrypt messages
+// Kyber1024Identity is the key seed bind to a certain kyber1024.(pk,sk) key pair, which can decapsulate messages
 // encrypted to the corresponding Kyber1024Recipient.
 type Kyber1024Identity struct {
 	ks []byte
@@ -129,26 +120,19 @@ func (i *Kyber1024Identity) unwrap(block *Stanza) ([]byte, error) {
 	if len(block.Args) != 1 {
 		return nil, errors.New("invalid Kyber1024 recipient block")
 	}
-	sig, err := format.DecodeString(block.Args[0])
+	wrappedKey, err := format.DecodeString(block.Args[0])
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse Kyber1024 sig: %v", err)
-	}
-	if len(sig[:]) != 32 {
-		fmt.Println(len(sig))
-		return nil, errors.New("invalid Kyber1024 encap sig size")
+		return nil, fmt.Errorf("failed to parse Kyber1024 wrappedKey: %v", err)
 	}
 
-	fileKey := make([]byte, kyber1024.PlaintextSize)
+	wrappingkey := make([]byte, kyber1024.SharedKeySize)
 	_, sk := kyber1024.NewKeyFromSeed(i.ks[:])
-	sk.DecryptTo(fileKey, block.Body)
-	h := sha3.NewShake256()
-	//signature := H(filekey||ct)
-	h.Write(fileKey)
-	h.Write(block.Body)
-	sig2 := make([]byte, 32)
-	h.Read(sig2[:])
-	if subtle.ConstantTimeCompare(sig[:], sig2[:]) == 0 {
-		return nil, fmt.Errorf("invalid Kyber1024 encap sig")
+	sk.DecapsulateTo(wrappingkey, block.Body)
+	fileKey, err := aeadDecrypt(wrappingkey, fileKeySize, wrappedKey)
+	if err == errIncorrectCiphertextSize {
+		return nil, errors.New("invalid Kyber1024 recipient block: incorrect file key size")
+	} else if err != nil {
+		return nil, ErrIncorrectIdentity
 	}
 
 	return fileKey, nil
