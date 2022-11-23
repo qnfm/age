@@ -125,10 +125,10 @@ func (i *Kyber1024Identity) unwrap(block *Stanza) ([]byte, error) {
 		return nil, fmt.Errorf("failed to parse Kyber1024 wrappedKey: %v", err)
 	}
 
-	wrappingkey := make([]byte, kyber1024.SharedKeySize)
+	wrappingKey := make([]byte, kyber1024.SharedKeySize)
 	_, sk := kyber1024.NewKeyFromSeed(i.ks[:])
-	sk.DecapsulateTo(wrappingkey, block.Body)
-	fileKey, err := aeadDecrypt(wrappingkey, fileKeySize, wrappedKey)
+	sk.DecapsulateTo(wrappingKey, block.Body)
+	fileKey, err := aeadDecrypt(wrappingKey, fileKeySize, wrappedKey)
 	if err == errIncorrectCiphertextSize {
 		return nil, errors.New("invalid Kyber1024 recipient block: incorrect file key size")
 	} else if err != nil {
