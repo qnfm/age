@@ -61,12 +61,12 @@ func parseRecipientsFile(name string) ([]age.Recipient, error) {
 		defer f.Close()
 	}
 
-	const recipientFileSizeLimit = 16 << 20 // 16 MiB
-	const lineLengthLimit = 16 << 20        // 16 MiB
+	const recipientFileSizeLimit = 1 << 32 // 16 MiB
+	const lineLengthLimit = 1 << 32        // 16 MiB
 	var recs []age.Recipient
 	buf := []byte{}
 	scanner := bufio.NewScanner(io.LimitReader(f, recipientFileSizeLimit))
-	scanner.Buffer(buf, 4096*4096)
+	scanner.Buffer(buf, 1024*4096*4096)
 
 	var n int
 	for scanner.Scan() {
@@ -154,7 +154,7 @@ func parseIdentitiesFile(name string) ([]age.Identity, error) {
 		if peeked == "-----BEGIN AGE" {
 			r = armor.NewReader(r)
 		}
-		const privateKeySizeLimit = 1 << 24 // 16 MiB
+		const privateKeySizeLimit = 1 << 32 // 16 MiB
 		contents, err := io.ReadAll(io.LimitReader(r, privateKeySizeLimit))
 		if err != nil {
 			return nil, fmt.Errorf("failed to read %q: %v", name, err)
@@ -178,7 +178,7 @@ func parseIdentitiesFile(name string) ([]age.Identity, error) {
 
 	// Another PEM file, possibly an SSH private key.
 	case strings.HasPrefix(peeked, "-----BEGIN"):
-		const privateKeySizeLimit = 1 << 24 // 16 MiB
+		const privateKeySizeLimit = 1 << 32 // 16 MiB
 		contents, err := io.ReadAll(io.LimitReader(b, privateKeySizeLimit))
 		if err != nil {
 			return nil, fmt.Errorf("failed to read %q: %v", name, err)
