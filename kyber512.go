@@ -6,7 +6,6 @@ package age
 
 import (
 	"crypto/rand"
-	"crypto/subtle"
 	"errors"
 	"fmt"
 	"io"
@@ -14,14 +13,14 @@ import (
 
 	"filippo.io/age/internal/bech32"
 	"filippo.io/age/internal/format"
-	"github.com/cloudflare/circl/pke/kyber/kyber512"
+	"github.com/cloudflare/circl/kem/kyber/kyber512"
 	"golang.org/x/crypto/sha3"
 )
 
 const KyberLabel = "age-encryption.org/v3/Kyber512"
 
-// X25519Recipient is the standard age public key. Messages encrypted to this
-// recipient can be decrypted with the corresponding X25519Identity.
+// Kyber512Recipient is the standard age public key. Messages encrypted to this
+// recipient can be decrypted with the corresponding Kyber512Identity.
 //
 // This recipient is anonymous, in the sense that an attacker can't tell from
 // the message alone if it is encrypted to a certain recipient.
@@ -31,7 +30,7 @@ type Kyber512Recipient struct {
 
 var _ Recipient = &Kyber512Recipient{}
 
-// ParseX25519Recipient returns a new Kyber512Recipient from a raw string without any encoding
+// ParseKyber512Recipient returns a new Kyber512Recipient from a raw string without any encoding
 func ParseKyber512Recipient(s string) (*Kyber512Recipient, error) {
 	t, k, err := bech32.Decode(s)
 	if err != nil {
@@ -45,30 +44,22 @@ func ParseKyber512Recipient(s string) (*Kyber512Recipient, error) {
 }
 
 func (r *Kyber512Recipient) Wrap(fileKey []byte) ([]*Stanza, error) {
-
-	h := sha3.NewShake256()
-	ct := make([]byte, kyber512.CiphertextSize)
-	h.Reset()
-	//ct := publickey.Encrypt(pt:e,seed:H(filekey||pk))
-	h.Write(fileKey)
-	h.Write(r.theirPublicKey)
-	seed := make([]byte, kyber512.KeySeedSize)
-	h.Read(seed[:])
+	//sharedKey<-encapsulate(pk) as wrappingKey
 	var p kyber512.PublicKey
 	p.Unpack(r.theirPublicKey)
+	ct := make([]byte, kyber512.CiphertextSize)
+	wrappingKey := make([]byte, kyber512.SharedKeySize)
+	p.EncapsulateTo(ct, wrappingKey, nil)
 
-	p.EncryptTo(ct, fileKey[:], seed[:])
-	h.Reset()
+	wrappedKey, err := aeadEncrypt(wrappingKey, fileKey)
+	if err != nil {
+		return nil, err
+	}
 
-	//signature := H(fileKey||ct)[:32]
-	h.Write(fileKey)
-	h.Write(ct)
-	sig := make([]byte, 32)
-	h.Read(sig[:])
-
+	//Due to the size of kyber.encapsulation,it's more pleasing to put wrappedKey to where ourPublicKey was
 	l := &Stanza{
 		Type: "Kyber512",
-		Args: []string{format.EncodeToString(sig)},
+		Args: []string{format.EncodeToString(wrappedKey)},
 		Body: ct,
 	}
 
@@ -81,7 +72,7 @@ func (r *Kyber512Recipient) String() string {
 	return s
 }
 
-// Kyber512Identity is the custom age private key, which can decrypt messages
+// Kyber512Identity is the key seed bind to a certain kyber512.(pk,sk) key pair, which can decapsulate messages
 // encrypted to the corresponding Kyber512Recipient.
 type Kyber512Identity struct {
 	ks []byte
@@ -129,26 +120,19 @@ func (i *Kyber512Identity) unwrap(block *Stanza) ([]byte, error) {
 	if len(block.Args) != 1 {
 		return nil, errors.New("invalid Kyber512 recipient block")
 	}
-	sig, err := format.DecodeString(block.Args[0])
+	wrappedKey, err := format.DecodeString(block.Args[0])
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse Kyber512 sig: %v", err)
-	}
-	if len(sig[:]) != 32 {
-		fmt.Println(len(sig))
-		return nil, errors.New("invalid Kyber512 encap sig size")
+		return nil, fmt.Errorf("failed to parse Kyber512 wrappedKey: %v", err)
 	}
 
-	fileKey := make([]byte, kyber512.PlaintextSize)
+	wrappingkey := make([]byte, kyber512.SharedKeySize)
 	_, sk := kyber512.NewKeyFromSeed(i.ks[:])
-	sk.DecryptTo(fileKey, block.Body)
-	h := sha3.NewShake256()
-	//signature := H(filekey||ct)
-	h.Write(fileKey)
-	h.Write(block.Body)
-	sig2 := make([]byte, 32)
-	h.Read(sig2[:])
-	if subtle.ConstantTimeCompare(sig[:], sig2[:]) == 0 {
-		return nil, fmt.Errorf("invalid Kyber512 encap sig")
+	sk.DecapsulateTo(wrappingkey, block.Body)
+	fileKey, err := aeadDecrypt(wrappingkey, fileKeySize, wrappedKey)
+	if err == errIncorrectCiphertextSize {
+		return nil, errors.New("invalid Kyber512 recipient block: incorrect file key size")
+	} else if err != nil {
+		return nil, ErrIncorrectIdentity
 	}
 
 	return fileKey, nil
