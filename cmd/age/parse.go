@@ -143,7 +143,7 @@ func parseIdentitiesFile(name string) ([]age.Identity, error) {
 		defer f.Close()
 	}
 
-	b := bufio.NewReader(f)
+	b := bufio.NewReaderSize(f, 1<<24)
 	p, _ := b.Peek(14) // length of "age-encryption" and "-----BEGIN AGE"
 	peeked := string(p)
 

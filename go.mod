@@ -8,6 +8,8 @@ require (
 	golang.org/x/term v0.8.0
 )
 
+require github.com/lukechampine/fastxor v0.0.0-20210322201628-b664bed5a5cc
+
 require (
 	github.com/cloudflare/circl v1.3.2
 	golang.org/x/sys v0.8.0 // indirect

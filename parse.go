@@ -21,11 +21,11 @@ import (
 // Currently, all returned values are of type *X25519Identity, but different
 // types might be returned in the future.
 func ParseIdentities(f io.Reader) ([]Identity, error) {
-	const privateKeySizeLimit = 1 << 32 // 16 MiB
+	const privateKeySizeLimit = 1 << 24 // 16 MiB
 	var ids []Identity
 	buf := []byte{}
 	scanner := bufio.NewScanner(io.LimitReader(f, privateKeySizeLimit))
-	scanner.Buffer(buf, 4096*4096)
+	scanner.Buffer(buf, 1<<24)
 
 	var n int
 	for scanner.Scan() {
@@ -59,11 +59,11 @@ func ParseIdentities(f io.Reader) ([]Identity, error) {
 // Currently, all returned values are of type *X25519Recipient, but different
 // types might be returned in the future.
 func ParseRecipients(f io.Reader) ([]Recipient, error) {
-	const recipientFileSizeLimit = 1 << 32 // 16 MiB
+	const recipientFileSizeLimit = 1 << 24 // 16 MiB
 	var recs []Recipient
 	buf := []byte{}
 	scanner := bufio.NewScanner(io.LimitReader(f, recipientFileSizeLimit))
-	scanner.Buffer(buf, 4096*4096)
+	scanner.Buffer(buf, 1<<24)
 
 	var n int
 	for scanner.Scan() {

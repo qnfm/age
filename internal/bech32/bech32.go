@@ -111,7 +111,7 @@ func Encode(hrp string, data []byte) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if len(hrp)+len(values)+7 > 1<<32 {
+	if len(hrp)+len(values)+7 > 1<<24 {
 		return "", fmt.Errorf("too long: hrp length=%d, data length=%d", len(hrp), len(values))
 	}
 	if len(hrp) < 1 {
@@ -144,7 +144,7 @@ func Encode(hrp string, data []byte) (string, error) {
 
 // Decode decodes a Bech32 string. If the string is uppercase, the HRP will be uppercase.
 func Decode(s string) (hrp string, data []byte, err error) {
-	if len(s) > 1<<32 {
+	if len(s) > 1<<24 {
 		return "", nil, fmt.Errorf("too long: len=%d", len(s))
 	}
 	if strings.ToLower(s) != s && strings.ToUpper(s) != s {
