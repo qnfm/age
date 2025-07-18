@@ -373,8 +373,6 @@ func identitiesToRecipients(ids []age.Identity) ([]age.Recipient, error) {
 		switch id := id.(type) {
 		case *age.Mceliece8192128fIdentity:
 			recipients = append(recipients, id.Recipient())
-		case *age.Kyber512Identity:
-			recipients = append(recipients, id.Recipient())
 		case *age.X25519Identity:
 			recipients = append(recipients, id.Recipient())
 		case *agessh.RSAIdentity:

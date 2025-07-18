@@ -49,43 +49,6 @@ func TestX25519RoundTrip(t *testing.T) {
 	}
 }
 
-func TestKyber512RoundTrip(t *testing.T) {
-	i, err := age.GenerateKyber512Identity()
-	if err != nil {
-		t.Fatal(err)
-	}
-	r := i.Recipient()
-
-	if r1, err := age.ParseKyber512Recipient(r.String()); err != nil {
-		t.Fatal(err)
-	} else if r1.String() != r.String() {
-		t.Errorf("recipient did not round-trip through parsing: got %q, want %q", r1, r)
-	}
-	if i1, err := age.ParseKyber512Identity(i.String()); err != nil {
-		t.Fatal(err)
-	} else if i1.String() != i.String() {
-		t.Errorf("identity did not round-trip through parsing: got %q, want %q", i1, i)
-	}
-
-	fileKey := make([]byte, 32)
-	if _, err := rand.Read(fileKey); err != nil {
-		t.Fatal(err)
-	}
-	stanzas, err := r.Wrap(fileKey)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	out, err := i.Unwrap(stanzas)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if !bytes.Equal(fileKey, out) {
-		t.Errorf("invalid output: %x, expected %x", out, fileKey)
-	}
-}
-
 func TestMcElieceRoundTrip(t *testing.T) {
 	i, err := age.GenerateMceliece8192128fIdentity()
 	if err != nil {
