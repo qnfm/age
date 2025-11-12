@@ -50,18 +50,18 @@ func TestX25519RoundTrip(t *testing.T) {
 }
 
 func TestMcElieceRoundTrip(t *testing.T) {
-	i, err := age.GenerateMceliece8192128fIdentity()
+	i, err := age.GenerateKyber1024Mceliece8192128fIdentity()
 	if err != nil {
 		t.Fatal(err)
 	}
 	r := i.Recipient()
 
-	if r1, err := age.ParseMceliece8192128fRecipient(r.String()); err != nil {
+	if r1, err := age.ParseKyber1024Mceliece8192128fRecipient(r.String()); err != nil {
 		t.Fatal(err)
 	} else if r1.String() != r.String() {
 		t.Errorf("recipient did not round-trip through parsing: got %q, want %q", r1, r)
 	}
-	if i1, err := age.ParseMceliece8192128fIdentity(i.String()); err != nil {
+	if i1, err := age.ParseKyber1024Mceliece8192128fIdentity(i.String()); err != nil {
 		t.Fatal(err)
 	} else if i1.String() != i.String() {
 		t.Errorf("identity did not round-trip through parsing: got %q, want %q", i1, i)
