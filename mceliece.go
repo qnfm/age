@@ -5,6 +5,7 @@
 package age
 
 import (
+	"crypto/subtle"
 	"errors"
 	"fmt"
 	"strings"
@@ -12,7 +13,6 @@ import (
 	"filippo.io/age/internal/bech32"
 	"filippo.io/age/internal/format"
 	"github.com/cloudflare/circl/kem/hybrid"
-	"github.com/lukechampine/fastxor"
 )
 
 const Kyber1024Mceliece8192128fLabel = "age-encryption.org/v4/Kyber1024Mceliece8192128f"
@@ -54,7 +54,7 @@ func (r *Kyber1024Mceliece8192128fRecipient) Wrap(fileKey []byte) ([]*Stanza, er
 		return nil, err
 	}
 	wrappingKey := make([]byte, 32)
-	fastxor.Bytes(wrappingKey, ss[:sch.SharedKeySize()/2], ss[sch.SharedKeySize()/2:])
+	subtle.XORBytes(wrappingKey, ss[:sch.SharedKeySize()/2], ss[sch.SharedKeySize()/2:])
 	wrappedKey, err := aeadEncrypt(wrappingKey, fileKey)
 	if err != nil {
 		return nil, err
@@ -155,7 +155,7 @@ func (i *Kyber1024Mceliece8192128fIdentity) unwrap(block *Stanza) ([]byte, error
 		return nil, err
 	}
 	wrappingKey := make([]byte, 32)
-	fastxor.Bytes(wrappingKey, ss[:sch.SharedKeySize()/2], ss[sch.SharedKeySize()/2:])
+	subtle.XORBytes(wrappingKey, ss[:sch.SharedKeySize()/2], ss[sch.SharedKeySize()/2:])
 
 	fileKey, err := aeadDecrypt(wrappingKey, fileKeySize, wrappedKey)
 	if err == errIncorrectCiphertextSize {
